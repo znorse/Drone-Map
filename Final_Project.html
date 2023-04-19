@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+  <html>
+    <head>
+		<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+		<link rel="stylesheet"
+	    href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.2.0/leaflet.css" type="text/css" crossorigin="">
+		<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.2.0/leaflet.js" crossorigin=""></script>
+		<script src="FFA_HR.js"></script>
+	    <script src="ParksHR.js"></script>
+	    <link rel="stylesheet" href="stylefp.css" type="text/css">
+	 
+	   <script type="text/javascript">
+
+	   var map;
+
+	    function init() {
+			 // create map and set center and zoom level
+			 map = new L.map('mapid');
+			 map.setView([36.959737,-76.371844], 10);
+		  
+			// create and add osm tile layer
+			var osm = L.tileLayer('http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+				maxZoom: 19,
+				attribution: '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+			});
+			osm.addTo(map);
+
+			// create stamen osm layer (not adding it to map)
+			var stamen = L.tileLayer('http://tile.stamen.com/toner/{z}/{x}/{y}.png', {
+				maxZoom: 19,
+				attribution: '&copy; <a href="http://www.openstreetmap.org/">OpenStreetMap</a> and contributors, under an <a href="http://www.openstreetmap.org/copyright" title="ODbL">open license</a>. Toner style by <a href="http://stamen.com">Stamen Design</a>'
+			});
+
+			var FFA_HRlayer;
+			var ParksHRlayer;
+
+			var selection;
+			var selectedLayer;
+
+			// define the styles for the FFA layer (unselected and selected)
+			function FFA_HRStyle(feature) {
+				return {
+				fillColor: getColor(feature.properties.AIRSPACE_1),
+				weight: .5,
+				fillOpacity: .5,
+				color: '#000000',
+				};
+			}
+
+
+			function FFA_HRSelectedStyle(feature) {
+					return {
+					fillColor: "#3e7375",
+					weight: .5,
+					color: '#000000',
+					fillOpacity: .5,
+					};
+			}
+
+			// handle click events on FFA features
+			function FFA_HROnEachFeature(feature, layer){
+					layer.on({
+					click: function(e) {
+							if (selection) {            
+							resetStyles();
+							}
+				
+							e.target.setStyle(FFA_HRSelectedStyle());
+							selection = e.target;
+							selectedLayer = FFA_HRLayer;
+
+							// Insert some HTML with the feature name
+							buildFFASummaryLabel(feature);
+
+							L.DomEvent.stopPropagation(e); // stop click event from being propagated further
+					}
+					});
+			}
+
+			// add the FFA_HR GeoJSON layer using the FFHAData variable from FFA_HR.js
+			var FFA_HRLayer = new L.geoJSON(FFAHRData, {
+					style: FFA_HRStyle,
+					onEachFeature: FFA_HROnEachFeature
+			});    
+			//console.log(FFA_HRLayer);
+			FFA_HRLayer.addTo(map);
+
+			console.log("FFA layer is " + FFA_HRLayer);
+
+
+			// define the styles for the Parks layer (unselected and selected)
+			function ParksHRStyle(feature) {
+				return {
+				fillColor: "#A9D158",
+				weight: .5,
+				fillOpacity: .5,
+				color: '#000000',
+				};
+		  	}
+
+			function ParksHRSelectedStyle(feature) {
+					return {
+					fillColor: "#B3A184",
+					weight: .5,
+					color: '#000000',
+					fillOpacity: .5,
+					};
+			}
+
+			// handle click events on Parks features
+			function ParksHROnEachFeature(feature, layer){
+					layer.on({
+						click: function(e) {
+							if (selection) {            
+								resetStyles();
+							}
+					
+							e.target.setStyle(ParksHRSelectedStyle());
+							selection = e.target;
+							selectedLayer = ParksHRLayer;
+
+							// Insert some HTML with the feature name
+							buildParksSummaryLabel(feature);
+
+							L.DomEvent.stopPropagation(e); // stop click event from being propagated further
+						}
+					});
+
+			}
+
+			// add the ParksLayer GeoJSON layer using the ParksHRData variable from ParksLayer.js
+			var ParksHRLayer = new L.geoJSON(ParksHRData, {
+					style: ParksHRStyle,
+					onEachFeature: ParksHROnEachFeature
+			});    
+			//console.log(ParksLayerLayer);
+			ParksHRLayer.addTo(map);
+
+			// handle clicks on the map that didn't hit a feature
+			map.addEventListener('click', function(e) {
+					if (selection) {
+						resetStyles();
+						selection = null;
+						document.getElementById('summaryLabel').innerHTML = '<p>Click a Park or FFA Zone for more information.</p>';
+					}
+			});
+
+			// function to set the old selected feature back to its original symbol. Used when the map or a feature is clicked.
+			function resetStyles(){
+					if (selectedLayer === FFA_HRLayer) selectedLayer.resetStyle(selection);
+					else if (selectedLayer === ParksHRLayer) selectedLayer.resetStyle(selection)
+				}
+
+			// function to build the HTML for the summary for FFA zones
+			function buildFFASummaryLabel(paramter){
+				console.log(paramter.properties);
+				var featureName = paramter.properties.APT1_NAME|| "No LAANC ";
+				var airspace = paramter.properties.AIRSPACE_1 || "None";
+				var ceiling = paramter.properties.CEILING || "None";
+				document.getElementById('summaryLabel').innerHTML = '<p style="font-size:18px"><b>' + featureName + ', ' + airspace + ', ' + ceiling + '</b></p>';
+			}
+			// function to build the HTML for the summary Parks
+			function buildParksSummaryLabel(paramter){
+				console.log(paramter.properties);
+				var name = paramter.properties.NAME|| "No Park ";
+				var Ownership = paramter.properties.Ownership || "None";
+				var drone = paramter.properties.Drone || "None";
+				document.getElementById('summaryLabel').innerHTML = '<p style="font-size:18px"><b>' + name + ', ' + Ownership + ', ' + drone + '</b></p>';
+			}
+
+		  	var baseMap = {"OpenStreetMap": osm};
+
+			var overlayMaps ={
+				"FFA":FFA_HRLayer,
+				//"Parks":ParksHRLayer
+			};
+
+		  	var layerControl = L.control.layers(baseMap, overlayMaps).addTo(map);
+
+		  	var parks = L.layerGroup([ParksHRLayer]);
+		  	layerControl.addOverlay(parks, "Parks");  
+
+			//Create legend for FFA zones
+			var legend = L.control({ position: "bottomleft"});
+			groups = ["C", "D", "E"];
+			console.log(groups);
+
+			legend.onAdd = function(map) {
+				var div = L.DomUtil.create("div", "legend");
+				div.innerHTML += "<h4>FFA Zones</h4>";
+
+				for (var i = 0; i < groups.length; i ++) {
+					console.log(groups[i]);
+					console.log(getColor(groups[i]));
+					div.innerHTML += '<i style="background: ' + getColor(groups[i]) + '"></i><span>' + groups[i] + '</span><br>';
+				}
+  				  				
+				return div;
+			};
+
+			legend.addTo(map);
+
+			function getColor(d) {
+				if (d === "C") {
+					return "#D82E10";
+				} else if (d === "D") {
+					return "#85B3F5";
+				} else if (d === "E") {
+					return "#E3B808";
+				} else {
+					return "#ff7f00";
+				}
+			}
+
+		}	
+	  </script>
+  </head>
+	<body onload="init()">
+	  <h1 id="title">Parks and Open spaces in Hampton Roads for Drone Flying with FFA LAANC Zones</h1>
+
+	  <div id="mapid"></div> 
+	  <div id="summaryLabel">	</div>
+	  <div>
+		  <p>Click a FFA zone box to see the Airspace class, Aiport/militry base it is assoicated with, and Ceiling height.</p>
+		  <p>Click on a Park to see the Owner, Jurisdiction, and if take off and landing and flying a drone with in the park is allowed</p>
+		  <p>Disclaimer: Park information is accurate at the best effort of the creator.  When in doubt always contact the land owern to confirm if drone flying is allowed.</p>
+		  <p>Warning: Always obey FFA rules and regulations when flying and get LAANC authorization when applicable to your flight.	</p>
+	  </div>
+	  <a href="https://faadronezone-access.faa.gov/">Link to FFA Drone Zone Website</a>
+		
+	</body>
+</html>
